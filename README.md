@@ -144,7 +144,7 @@ Supports:
 ### Step 1: Clone Repo
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/Vaishnavik05/semantic_search
 cd research_paper_search
 ````
 
