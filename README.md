@@ -1,4 +1,4 @@
-# Research Paper Semantic Search Engine
+# Research Papers Semantic Search Engine
 
 An intelligent semantic search system specifically designed for academic research papers, powered by Endee vector database and scientific language models.
 
@@ -25,7 +25,7 @@ This system provides:
 - Section-aware search (abstract, methods, results)
 - Citation network analysis
 - Fast retrieval with Endee vector database
-
+Deploy Link: https://semanticsearch-kd35tctiainr679ey3xcqt.streamlit.app/
 ---
 
 ## Use Cases
@@ -394,15 +394,6 @@ streamlit run app/streamlit_app.py --server.port 8501
 
 ---
 
-### Docker
-
-```bash
-docker build -t research-search .
-docker run -p 8501:8501 -v $(pwd)/data:/app/data research-search
-```
-
----
-
 ## Dataset Sources
 
 * ArXiv
@@ -415,9 +406,7 @@ docker run -p 8501:8501 -v $(pwd)/data:/app/data research-search
 ## Conclusion
 
 This project demonstrates a scalable, intelligent semantic search engine for academic research using:
-
 ✔ Endee Vector Database
 ✔ Scientific embeddings
 ✔ Metadata-aware retrieval
-
 Perfect for AI-driven knowledge discovery.
