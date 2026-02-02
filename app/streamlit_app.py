@@ -2,13 +2,12 @@
 Streamlit web interface for research paper semantic search.
 """
 import streamlit as st
-import sys
-from pathlib import Path
-import pandas as pd
-import plotly.express as px
-import traceback
-import re
 import json
+import re
+import traceback
+from pathlib import Path
+import sys
+import plotly.graph_objects as go
 
 src_path = str(Path(__file__).parent.parent / 'src')
 if src_path not in sys.path:
@@ -52,7 +51,7 @@ def highlight_keywords(text, keywords):
     return text
 
 st.title("Research Paper Semantic Search")
-st.markdown("Powered by TF-IDF & Endee Vector Database")
+st.markdown("Powered by TF-IDF Embeddings & Endee Vector Database")
 st.markdown("---")
 
 with st.sidebar:
@@ -68,12 +67,12 @@ with st.sidebar:
     if st.button("Index Papers", use_container_width=True, type="primary"):
         with st.spinner("Indexing papers..."):
             try:
-                st.session_state.engine.index_papers(str(Path(data_dir).resolve()))
+                st.session_state.engine.index_papers(data_dir)
                 st.session_state.indexed = True
-                st.success("Papers indexed successfully!")
+                st.success("Papers indexed successfully")
                 st.rerun()
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Indexing failed: {e}")
     
     st.markdown("---")
     st.subheader("Statistics")
@@ -84,17 +83,24 @@ with st.sidebar:
             
             col1, col2 = st.columns(2)
             with col1:
-                st.metric("Papers", stats['total_papers'])
+                st.metric("Total Papers", stats['total_papers'])
             with col2:
-                st.metric("Chunks", stats['total_chunks'])
+                st.metric("Total Chunks", stats['total_chunks'])
             
             if stats.get('papers_by_year'):
-                year_df = pd.DataFrame(
-                    list(stats['papers_by_year'].items()),
-                    columns=['Year', 'Count']
-                )
-                fig = px.bar(year_df, x='Year', y='Count', title='Papers by Year')
+                st.subheader("Papers by Year")
+                years = list(stats['papers_by_year'].keys())
+                counts = list(stats['papers_by_year'].values())
+                
+                fig = go.Figure(data=[go.Bar(x=years, y=counts)])
+                fig.update_layout(height=200, margin=dict(l=0, r=0, t=0, b=0))
                 st.plotly_chart(fig, use_container_width=True)
+            
+            if stats.get('citation_stats'):
+                st.subheader("Citation Network")
+                cit_stats = stats['citation_stats']
+                st.metric("Total Citation Edges", cit_stats.get('total_edges', 0))
+                
         except Exception as e:
             st.error(f"Error: {e}")
     else:
@@ -120,7 +126,7 @@ with st.sidebar:
                 options=["All Sections"] + available_sections
             )
             if selected_section != "All Sections":
-                filters['section'] = selected_section.lower()
+                filters['section'] = selected_section
 
 if not st.session_state.indexed:
     st.warning("Please index papers first")
@@ -149,16 +155,17 @@ else:
     if search_button and query:
         with st.spinner("Searching..."):
             try:
-                st.session_state.results = st.session_state.engine.search(
+                results = st.session_state.engine.search(
                     query,
                     top_k=top_k,
                     filters=filters if filters else None,
                     similarity_threshold=threshold
                 )
+                st.session_state.results = results
                 st.session_state.last_query = query
-                st.success(f"Found {len(st.session_state.results)} results")
+                st.rerun()
             except Exception as e:
-                st.error(f"Search error: {e}")
+                st.error(f"Search failed: {e}")
     
     if clear_button:
         st.session_state.results = []
@@ -171,40 +178,38 @@ else:
         
         for i, result in enumerate(st.session_state.results, 1):
             with st.container():
-                col1, col2 = st.columns([5, 1])
+                col1, col2 = st.columns([3, 1])
                 
                 with col1:
                     st.markdown(f"**{i}. {result.get('paper_title', 'Unknown')}**")
                     
-                    meta_cols = st.columns(4)
-                    with meta_cols[0]:
-                        st.caption(f"Year: {result.get('year', 'N/A')}")
-                    with meta_cols[1]:
-                        st.caption(f"Section: {result.get('section', 'N/A')}")
-                    with meta_cols[2]:
-                        authors = result.get('authors', ['Unknown'])
-                        author_str = ', '.join(str(a) for a in authors[:2])
-                        if len(authors) > 2:
-                            author_str += f" +{len(authors)-2}"
-                        st.caption(f"Authors: {author_str}")
-                    with meta_cols[3]:
-                        st.caption(f"File: {result.get('filename', 'N/A')}")
-                
                 with col2:
-                    st.metric("Score", f"{result.get('score', 0):.3f}")
+                    st.markdown(f"Score: **{result.get('score', 0):.3f}**")
                 
-                with st.expander("Content"):
-                    content = result.get('content', 'No content')
-                    highlighted_content = highlight_keywords(content, st.session_state.last_query)
-                    st.markdown(highlighted_content, unsafe_allow_html=True)
+                col_a, col_b, col_c = st.columns(3)
+                with col_a:
+                    if result.get('authors'):
+                        st.markdown(f"Authors: {', '.join(result['authors'][:3])}")
+                with col_b:
+                    if result.get('year'):
+                        st.markdown(f"Year: {result['year']}")
+                with col_c:
+                    st.markdown(f"Section: {result.get('section', 'N/A')}")
+                
+                content = result.get('content', '')[:500]
+                highlighted = highlight_keywords(content, st.session_state.last_query)
+                st.markdown(highlighted, unsafe_allow_html=True)
+                
+                if result.get('citation_count', 0) > 0:
+                    st.caption(f"Citations: {result['citation_count']}")
                 
                 st.markdown("---")
         
         if st.button("Export Results as JSON"):
             json_str = json.dumps(st.session_state.results, indent=2)
             st.download_button(
-                "Download JSON",
-                json_str,
+                label="Download JSON",
+                data=json_str,
                 file_name="search_results.json",
                 mime="application/json"
             )

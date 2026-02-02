@@ -1,11 +1,10 @@
 """
 Research paper semantic search engine.
 """
-import sys
 import os
+import sys
 import yaml
-import traceback
-import numpy as np
+import json
 from typing import List, Dict, Optional
 from pathlib import Path
 from tqdm import tqdm
@@ -47,12 +46,13 @@ class ResearchPaperSearch:
         if not config_path.exists():
             self.config = {
                 'embedding': {'model_name': 'TF-IDF', 'device': 'cpu'},
-                'processing': {'chunk_size': 200, 'chunk_overlap': 50},
+                'processing': {'chunk_size': 300, 'chunk_overlap': 75},
                 'endee': {'db_path': 'vector_store/papers.db'},
-                'search': {'top_k': 10, 'similarity_threshold': 0.1}
+                'search': {'top_k': 10, 'similarity_threshold': 0.15},
+                'citations': {'build_citation_graph': True}
             }
         else:
-            with open(config_path) as f:
+            with open(config_path, 'r') as f:
                 self.config = yaml.safe_load(f)
         
         self.pdf_parser = ResearchPaperPDFParser() if ResearchPaperPDFParser else None
@@ -79,6 +79,7 @@ class ResearchPaperSearch:
         pdf_files = list(Path(directory).rglob("*.pdf")) + list(Path(directory).rglob("*.txt"))
         
         if not pdf_files:
+            print(f"No PDF or TXT files found in {directory}")
             return
         
         chunks = []
@@ -87,59 +88,75 @@ class ResearchPaperSearch:
         
         for pdf_path in tqdm(pdf_files, desc="Processing papers"):
             try:
-                parsed = self.pdf_parser.parse_pdf(str(pdf_path))
-                if not parsed:
+                if str(pdf_path).endswith('.txt'):
+                    with open(pdf_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        text = f.read()
+                    parsed = {
+                        'text': text,
+                        'metadata': {'title': pdf_path.stem},
+                        'sections': {'full_text': text},
+                        'citations': [],
+                        'num_pages': 1
+                    }
+                else:
+                    parsed = self.pdf_parser.parse_pdf(str(pdf_path))
+                
+                if not parsed or not parsed.get('text'):
                     continue
                 
-                filename = pdf_path.name
-                paper_metadata = parsed.get('metadata', {})
-                paper_metadata['filename'] = filename
+                paper_metadata = self.metadata_extractor.extract(parsed, pdf_path.name)
+                
+                if self.citation_extractor:
+                    citations = self.citation_extractor.extract_citations(
+                        parsed.get('text', ''),
+                        pdf_path.name
+                    )
+                    paper_metadata['citations'] = citations
+                    paper_metadata['num_citations'] = len(citations)
+                
+                papers_indexed.append(paper_metadata)
                 
                 sections = parsed.get('sections', {})
-                
                 if not sections:
-                    full_text = parsed.get('text', '')
-                    if full_text.strip():
-                        sections = {'introduction': full_text}
+                    sections = {'full_text': parsed.get('text', '')}
                 
                 for section_name, section_text in sections.items():
                     if not section_text or len(section_text.strip()) < 50:
                         continue
                     
-                    section_name_clean = section_name.lower().strip()
-                    
                     section_chunks = self.document_processor.chunk_text(
                         section_text,
-                        preserve_sentences=True
+                        preserve_sentences=self.config['processing'].get('preserve_sentences', True)
                     )
                     
-                    for chunk_text in section_chunks:
-                        if len(chunk_text.strip()) < 20:
-                            continue
-                        
-                        chunks.append(chunk_text)
-                        
-                        chunk_meta = {
-                            'paper_title': paper_metadata.get('title', filename),
-                            'authors': paper_metadata.get('authors', ['Unknown']),
+                    for chunk in section_chunks:
+                        chunks.append(chunk)
+                        metadata_list.append({
+                            'content': chunk,
+                            'paper_title': paper_metadata['title'],
+                            'authors': paper_metadata['authors'],
                             'year': paper_metadata.get('year'),
-                            'section': section_name_clean,
-                            'content': chunk_text[:500],
-                            'filename': filename
-                        }
-                        metadata_list.append(chunk_meta)
-                
-                papers_indexed.append(paper_metadata)
-                
+                            'section': section_name,
+                            'filename': pdf_path.name,
+                            'venue': paper_metadata.get('venue'),
+                            'num_citations': paper_metadata.get('num_citations', 0)
+                        })
+            
             except Exception as e:
+                print(f"Error processing {pdf_path.name}: {e}")
                 continue
         
         if not chunks:
+            print("No content extracted from papers")
             return
         
         embeddings = self.embedding_service.embed_batch(chunks, show_progress=True)
         self.vector_store.add_vectors(embeddings, metadata_list)
         self.papers = papers_indexed
+        
+        if self.citation_extractor and self.config.get('citations', {}).get('build_citation_graph', False):
+            self.citation_extractor.build_citation_graph(papers_indexed)
+            print(f"Built citation graph with {len(papers_indexed)} papers")
     
     def search(
         self,
@@ -149,7 +166,7 @@ class ResearchPaperSearch:
         similarity_threshold: Optional[float] = None
     ) -> List[Dict]:
         if similarity_threshold is None:
-            similarity_threshold = 0.0
+            similarity_threshold = self.config['search'].get('similarity_threshold', 0.15)
         
         if self.vector_store.size() == 0:
             return []
@@ -167,14 +184,18 @@ class ResearchPaperSearch:
         
         results = self._apply_boosting(results)
         
+        if self.citation_extractor:
+            for result in results:
+                filename = result.get('filename', '')
+                result['citation_count'] = self.citation_extractor.get_citation_count(filename)
+        
         return results[:top_k]
     
     def _apply_filters(self, results: List[Dict], filters: Dict) -> List[Dict]:
         filtered = results
         
         if 'section' in filters and filters['section'] and filters['section'] != 'All Sections':
-            section_filter = filters['section'].lower().strip()
-            filtered = [r for r in filtered if r.get('section', '').lower() == section_filter]
+            filtered = [r for r in filtered if r.get('section') == filters['section']]
         
         if 'year_min' in filters and filters['year_min']:
             filtered = [r for r in filtered if r.get('year') and r['year'] >= filters['year_min']]
@@ -183,58 +204,60 @@ class ResearchPaperSearch:
             filtered = [r for r in filtered if r.get('year') and r['year'] <= filters['year_max']]
         
         if 'authors' in filters and filters['authors']:
-            author_query = filters['authors'].lower().strip()
-            filtered = [
-                r for r in filtered
-                if any(author_query in str(author).lower() for author in r.get('authors', []))
-            ]
+            author_filter = [a.lower() for a in filters['authors']]
+            filtered = [r for r in filtered 
+                       if any(author.lower() in ' '.join(r.get('authors', [])).lower() 
+                             for author in author_filter)]
         
         return filtered
     
     def _apply_boosting(self, results: List[Dict]) -> List[Dict]:
         for result in results:
-            section = result.get('section', '').lower()
+            score = result.get('score', 0)
             
-            if 'abstract' in section:
-                result['score'] = result.get('score', 0) * 1.5
-            elif 'conclusion' in section:
-                result['score'] = result.get('score', 0) * 1.3
-            elif 'introduction' in section:
-                result['score'] = result.get('score', 0) * 1.2
+            if result.get('section') == 'abstract':
+                score *= self.config['search'].get('boost_abstract', 1.5)
+            
+            if self.config['search'].get('boost_recent', False):
+                year = result.get('year')
+                threshold = self.config['search'].get('recent_year_threshold', 2020)
+                if year and year >= threshold:
+                    score *= 1.2
+            
+            result['score'] = score
         
         results.sort(key=lambda x: x.get('score', 0), reverse=True)
         return results
     
     def get_stats(self) -> Dict:
-        stats = {
+        return {
             'total_papers': len(self.papers),
             'total_chunks': self.vector_store.size(),
-            'model_name': self.config['embedding']['model_name'],
-            'sections': self.get_available_sections(),
-            'papers_by_year': self._count_by_year()
+            'papers_by_year': self._count_by_year(),
+            'citation_stats': self.citation_extractor.get_graph_stats() if self.citation_extractor else {}
         }
-        return stats
     
     def _count_by_year(self) -> Dict[int, int]:
         year_counts = {}
-        seen_papers = set()
-        
-        for meta in self.vector_store.metadata_store:
-            paper_title = meta.get('paper_title', '')
-            year = meta.get('year')
-            
-            if paper_title and year and paper_title not in seen_papers:
-                seen_papers.add(paper_title)
+        for paper in self.papers:
+            year = paper.get('year')
+            if year:
                 year_counts[year] = year_counts.get(year, 0) + 1
-        
         return dict(sorted(year_counts.items()))
     
     def get_available_sections(self) -> List[str]:
         sections = set()
-        
         for meta in self.vector_store.metadata_store:
-            section = meta.get('section', '').lower().strip()
-            if section and section != 'unknown':
-                sections.add(section)
-        
+            if meta.get('section'):
+                sections.add(meta['section'])
         return sorted(list(sections))
+    
+    def get_citation_network(self, paper_filename: str) -> Dict:
+        if not self.citation_extractor:
+            return {}
+        
+        return {
+            'citing_papers': self.citation_extractor.get_citing_papers(paper_filename),
+            'cited_papers': self.citation_extractor.get_cited_papers(paper_filename),
+            'citation_count': self.citation_extractor.get_citation_count(paper_filename)
+        }

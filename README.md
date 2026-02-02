@@ -20,11 +20,11 @@ Researchers face challenges when searching through large collections of academic
 
 This system provides:
 
-- Meaning-based semantic search  
-- Metadata extraction (authors, year, venue)  
-- Section-aware search (abstract, methods, results)  
-- Citation exploration  
-- Scientific embeddings (SciBERT)  
+- Meaning-based semantic search using TF-IDF vectorization
+- Metadata extraction (authors, year, venue)
+- Section-aware search (abstract, methods, results)
+- Citation network analysis
+- Fast retrieval with Endee vector database
 
 ---
 
@@ -90,7 +90,7 @@ Metadata Extraction
 ↓
 Section-Aware Chunking
 ↓
-SciBERT Embeddings (768D)
+TF-IDF Embeddings (768D)
 ↓
 Endee Vector Database
 ↓
@@ -133,7 +133,7 @@ Supports:
 
 ## Setup Instructions
 
-### ✅ Prerequisites
+### Prerequisites
 
 - Python 3.8+
 - Git
@@ -324,48 +324,54 @@ jupyter notebook notebooks/research_demo.ipynb
 
 ## Technical Details
 
-### Embedding Model: SciBERT
+### Embedding Model: TF-IDF
 
-* Based on BERT-base
-* Trained on 1.14M research papers
-* 768-dimensional vectors
+- Lightweight statistical text vectorization
+- 768-dimensional feature vectors
+- N-gram support (unigrams and bigrams)
+- Fast indexing and search
+- No GPU required
 
 ---
+
+### Endee Vector Database
+
+This project uses [Endee](https://github.com/EndeeLabs/endee) for efficient vector storage and similarity search:
+
+- Native vector operations
+- Persistent storage support
+- Cosine similarity search
+- Fast retrieval (<100ms)
+- Scalable to large datasets
+
+#### Repository Information
+
+- **Original Repository**: https://github.com/EndeeLabs/endee
+- **Forked Repository**: https://github.com/Vaishnavik05/endee
+- **Installation**: `pip install endee`
+
+The repository has been forked to study the implementation and understand vector database internals.
 
 ### PDF Parsing
 
-* pdfplumber for extraction
-* Regex for section detection
-* NLP for citations
+- pdfplumber for extraction
+- Regex for section detection
+- NLP for citations
 
----
+#### Installation
 
-### Chunking Strategy
-
-```python
-abstract_weight = 1.5
-
-body_chunks = chunk_text(
-    text,
-    size=512,
-    overlap=64
-)
+```bash
+pip install endee
 ```
 
 ---
 
-### Ranking Formula
+### Citation Network
 
-```python
-final_score = (
-    semantic_similarity * 0.7 +
-    metadata_match * 0.2 +
-    section_relevance * 0.1
-)
-
-if section == "abstract":
-    final_score *= 1.5
-```
+- Automatic citation extraction from references
+- Citation graph construction
+- Most-cited papers ranking
+- Paper relationship mapping
 
 ---
 

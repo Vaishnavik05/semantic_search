@@ -1,74 +1,79 @@
 """
-Extract and process citations from research papers.
+Extract and analyze citations from research papers.
 """
 import re
-from typing import List, Dict
+from typing import List, Dict, Optional
+from collections import defaultdict
 
 
 class CitationExtractor:
-    """Extract citations and build citation networks."""
     
     def __init__(self):
-        pass
+        self.citation_graph = defaultdict(list)
+        self.paper_citations = {}
     
-    def extract_in_text_citations(self, text: str) -> List[str]:
-        """Extract in-text citations like [1], [Smith et al. 2020]."""
+    def extract_citations(self, text: str, paper_id: str) -> List[str]:
         citations = []
         
-        numeric_citations = re.findall(r'\[(\d+(?:,\s*\d+)*)\]', text)
-        for citation in numeric_citations:
-            citations.extend(citation.split(','))
+        ref_match = re.search(
+            r'(?:references|bibliography)\s*\n(.*)',
+            text,
+            re.IGNORECASE | re.DOTALL
+        )
         
-        author_year = re.findall(r'\(([A-Z][a-z]+(?:\s+et\s+al\.?)?,?\s+\d{4})\)', text)
-        citations.extend(author_year)
+        if ref_match:
+            ref_text = ref_match.group(1)
+            citation_lines = ref_text.split('\n')
+            
+            for line in citation_lines[:100]:
+                line = line.strip()
+                if len(line) > 20 and not line.startswith('Page'):
+                    citations.append(line)
         
-        return list(set([c.strip() for c in citations]))
+        self.paper_citations[paper_id] = citations
+        return citations
     
-    def parse_reference(self, reference: str) -> Dict:
-        """Parse a single reference into structured format."""
-        parsed = {
-            'raw': reference,
-            'authors': [],
-            'title': None,
-            'year': None,
-            'venue': None
-        }
-        
-        year_match = re.search(r'\b(19|20)\d{2}\b', reference)
-        if year_match:
-            parsed['year'] = int(year_match.group())
-        
-        title_match = re.search(r'"([^"]+)"', reference)
-        if title_match:
-            parsed['title'] = title_match.group(1)
-        
-        if parsed['year']:
-            text_before_year = reference.split(str(parsed['year']))[0]
-            potential_authors = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z]\.?)?\b', text_before_year)
-            parsed['authors'] = potential_authors[:5]
-        
-        return parsed
-    
-    def build_citation_graph(self, papers: List[Dict]) -> Dict:
-        """Build citation network from multiple papers."""
-        graph = {
-            'nodes': [],
-            'edges': []
-        }
+    def build_citation_graph(self, papers: List[Dict]):
+        self.citation_graph.clear()
         
         for paper in papers:
-            graph['nodes'].append({
-                'id': paper.get('title', 'Unknown'),
-                'year': paper.get('year'),
-                'authors': paper.get('authors', [])
-            })
+            paper_id = paper.get('filename', paper.get('title', ''))
+            citations = paper.get('citations', [])
             
-            for citation in paper.get('citations', []):
-                parsed_citation = self.parse_reference(citation)
-                if parsed_citation['title']:
-                    graph['edges'].append({
-                        'from': paper.get('title'),
-                        'to': parsed_citation['title']
-                    })
+            for citation in citations:
+                for other_paper in papers:
+                    other_id = other_paper.get('filename', other_paper.get('title', ''))
+                    other_title = other_paper.get('title', '')
+                    
+                    if other_id != paper_id and other_title and other_title.lower() in citation.lower():
+                        self.citation_graph[paper_id].append(other_id)
+    
+    def get_citing_papers(self, paper_id: str) -> List[str]:
+        citing_papers = []
+        for citing_id, cited_ids in self.citation_graph.items():
+            if paper_id in cited_ids:
+                citing_papers.append(citing_id)
+        return citing_papers
+    
+    def get_cited_papers(self, paper_id: str) -> List[str]:
+        return self.citation_graph.get(paper_id, [])
+    
+    def get_citation_count(self, paper_id: str) -> int:
+        return len(self.get_citing_papers(paper_id))
+    
+    def get_most_cited_papers(self, top_k: int = 10) -> List[tuple]:
+        citation_counts = {}
         
-        return graph
+        for paper_id in self.paper_citations.keys():
+            citation_counts[paper_id] = self.get_citation_count(paper_id)
+        
+        sorted_papers = sorted(citation_counts.items(), key=lambda x: x[1], reverse=True)
+        return sorted_papers[:top_k]
+    
+    def get_graph_stats(self) -> Dict:
+        return {
+            'total_papers': len(self.paper_citations),
+            'total_edges': sum(len(cited) for cited in self.citation_graph.values()),
+            'avg_citations_per_paper': sum(len(cit) for cit in self.paper_citations.values()) / max(len(self.paper_citations), 1),
+            'most_cited': self.get_most_cited_papers(5)
+        }
