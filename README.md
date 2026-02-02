@@ -25,7 +25,9 @@ This system provides:
 - Section-aware search (abstract, methods, results)
 - Citation network analysis
 - Fast retrieval with Endee vector database
-Deploy Link: https://semanticsearch-kd35tctiainr679ey3xcqt.streamlit.app/
+
+---
+### Deploy Link: https://semanticsearch-kd35tctiainr679ey3xcqt.streamlit.app/
 ---
 
 ## Use Cases
