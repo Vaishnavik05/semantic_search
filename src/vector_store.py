@@ -1,6 +1,3 @@
-"""
-Enhanced vector store with Endee and rich metadata support.
-"""
 from typing import List, Dict, Optional
 import numpy as np
 import os

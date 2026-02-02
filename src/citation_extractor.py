@@ -1,6 +1,3 @@
-"""
-Extract and analyze citations from research papers.
-"""
 import re
 from typing import List, Dict, Optional
 from collections import defaultdict

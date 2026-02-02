@@ -1,6 +1,3 @@
-"""
-CLI interface for research paper semantic search.
-"""
 import argparse
 import sys
 from pathlib import Path
@@ -68,7 +65,7 @@ Examples:
         parser.print_help()
         return
     
-    print("\n🔬 Research Paper Semantic Search Engine")
+    print("\n Research Paper Semantic Search Engine")
     print("=" * 60)
     
     try:
@@ -82,7 +79,7 @@ Examples:
             show_stats(engine)
     
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n Error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
@@ -92,14 +89,14 @@ def index_papers(engine: ResearchPaperSearch, data_dir: str):
     """Index papers from directory."""
     data_path = Path(data_dir)
     if not data_path.exists():
-        print(f"❌ Directory not found: {data_dir}")
+        print(f" Directory not found: {data_dir}")
         return
     engine.index_papers(str(data_path))
 
 
 def search_papers(engine: ResearchPaperSearch, args):
     """Search for papers."""
-    print(f"\n🔍 Query: '{args.query}'")
+    print(f"\n Query: '{args.query}'")
     print("-" * 60)
     
     filters = {}
@@ -120,20 +117,20 @@ def search_papers(engine: ResearchPaperSearch, args):
     )
     
     if not results:
-        print("\n❌ No results found\n")
+        print("\n No results found\n")
         return
     
-    print(f"\n✅ Found {len(results)} results:\n")
+    print(f"\n Found {len(results)} results:\n")
     
     for i, result in enumerate(results, 1):
         print(f"{'='*60}")
         print(f"Result {i} | Similarity: {result['score']:.4f}")
         print(f"{'='*60}")
-        print(f"📄 Paper: {result['paper_title'][:70]}")
-        print(f"👥 Authors: {', '.join(result['authors'][:3])}")
-        print(f"📅 Year: {result['year']}")
-        print(f"📂 Section: {result['section'].upper()}")
-        print(f"📋 Content:\n{result['content'][:400]}...\n")
+        print(f" Paper: {result['paper_title'][:70]}")
+        print(f" Authors: {', '.join(result['authors'][:3])}")
+        print(f" Year: {result['year']}")
+        print(f" Section: {result['section'].upper()}")
+        print(f" Content:\n{result['content'][:400]}...\n")
     
     if args.export:
         export_results(results, args.export)
@@ -143,7 +140,7 @@ def show_stats(engine: ResearchPaperSearch):
     """Show engine statistics."""
     stats = engine.get_stats()
     
-    print("\n📊 Search Engine Statistics")
+    print("\n Search Engine Statistics")
     print("-" * 60)
     
     if tabulate:
@@ -161,7 +158,7 @@ def show_stats(engine: ResearchPaperSearch):
         print(f"Model: {stats['model_name']}")
     
     if stats.get('papers_by_year'):
-        print("\n📈 Papers by Year:")
+        print("\n Papers by Year:")
         print("-" * 60)
         for year, count in stats['papers_by_year'].items():
             print(f"{year}: {count}")
@@ -191,7 +188,7 @@ def export_results(results: list, format_type: str):
                     'score': result['score']
                 })
     
-    print(f"\n✅ Results exported to: {filename}")
+    print(f"\n Results exported to: {filename}")
 
 
 if __name__ == '__main__':

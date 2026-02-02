@@ -1,6 +1,3 @@
-"""
-Extract and structure metadata from research papers.
-"""
 import re
 from typing import Dict, List, Optional
 
@@ -49,7 +46,7 @@ class MetadataExtractor:
             'research', 'center', 'laboratory', 'division', 'faculty',
             'abstract', 'introduction', 'paper', 'algorithm', 'abstract',
             'method', 'results', 'conclusion', 'reference', 'appendix',
-            'nagalla', 'amaravati'
+            'amaravati'
         }
         
         exclude_patterns = [
@@ -161,7 +158,6 @@ def search(
     return combined_results
 
 def _search_metadata(self, query: str, top_k: int) -> List[Dict]:
-    """Search in metadata (authors, titles, etc.)"""
     query_lower = query.lower().strip()
     metadata_matches = []
     
@@ -193,7 +189,6 @@ def _search_metadata(self, query: str, top_k: int) -> List[Dict]:
     return metadata_matches[:top_k]
 
 def _combine_results(self, semantic_results: List[Dict], metadata_results: List[Dict], top_k: int) -> List[Dict]:
-    """Combine semantic and metadata search results"""
     seen_indices = set()
     combined = []
     

@@ -41,8 +41,8 @@ vector_store/
 endee_data/
 
 # Data files
-data/papers/*.pdf
-!data/sample_papers/
+!data/papers/
+!data/papers/*.pdf
 data/sample_papers/*.pdf
 
 # IDE

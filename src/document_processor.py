@@ -1,6 +1,3 @@
-"""
-Enhanced document processor for research papers.
-"""
 import os
 import re
 from typing import List, Dict
@@ -8,21 +5,17 @@ from pathlib import Path
 
 
 class DocumentProcessor:
-    """Process and chunk research papers."""
-    
     def __init__(self, chunk_size: int = 512, chunk_overlap: int = 64):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
     
     def chunk_text(self, text: str, preserve_sentences: bool = True) -> List[str]:
-        """Split text into overlapping chunks while preserving sentence boundaries."""
         if preserve_sentences:
             return self._chunk_by_sentences(text)
         else:
             return self._chunk_by_words(text)
     
     def _chunk_by_words(self, text: str) -> List[str]:
-        """Split by words with overlap."""
         words = text.split()
         chunks = []
         
@@ -34,7 +27,6 @@ class DocumentProcessor:
         return chunks
     
     def _chunk_by_sentences(self, text: str) -> List[str]:
-        """Split by sentences while respecting chunk size."""
         # Split into sentences
         sentences = re.split(r'(?<=[.!?])\s+', text)
         

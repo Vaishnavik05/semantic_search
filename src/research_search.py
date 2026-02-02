@@ -1,6 +1,3 @@
-"""
-Research paper semantic search engine.
-"""
 import os
 import sys
 import yaml

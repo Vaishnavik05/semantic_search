@@ -1,6 +1,3 @@
-"""
-Advanced PDF parser specifically for research papers.
-"""
 import re
 import pdfplumber
 from typing import Dict, List, Optional
@@ -126,7 +123,6 @@ class ResearchPaperPDFParser:
         return authors[:10]
     
     def _detect_sections_aggressive(self, text: str) -> Dict[str, str]:
-        """Aggressively detect all sections - split entire PDF into sections."""
         sections = {}
         lines = text.split('\n')
         

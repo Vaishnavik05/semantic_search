@@ -1,6 +1,3 @@
-"""
-Tests for research paper search engine.
-"""
 import pytest
 import numpy as np
 
