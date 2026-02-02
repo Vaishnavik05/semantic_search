@@ -1,0 +1,42 @@
+# Embedding Model Configuration
+embedding:
+  model_name: "TF-IDF"
+  device: "cpu"
+  batch_size: 16
+  max_length: 512
+
+# Document Processing
+processing:
+  chunk_size: 300
+  chunk_overlap: 75
+  preserve_sentences: true
+  extract_citations: true
+  extract_metadata: true
+
+# Endee Configuration
+endee:
+  db_path: "vector_store/papers.db"
+  dimension: 768
+  persist: true
+
+# Search Configuration
+search:
+  top_k: 10
+  similarity_threshold: 0.15  # Changed from 0.0 to 0.15
+  boost_abstract: 1.5
+  boost_recent: true
+  recent_year_threshold: 2020
+
+# Metadata
+metadata:
+  extract_authors: true
+  extract_year: true
+  extract_venue: true
+  extract_doi: true
+  extract_citations: true
+  extract_abstract: true
+
+# Citation Processing
+citations:
+  max_citations_per_paper: 100
+  build_citation_graph: true

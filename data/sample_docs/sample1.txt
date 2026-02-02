@@ -1,0 +1,27 @@
+The Transformer Architecture
+
+The Transformer is a deep learning model architecture introduced in the paper "Attention Is All You Need" by Vaswani et al. (2017).
+
+Abstract
+The dominant sequence transduction models are based on complex recurrent or convolutional neural networks in an encoder-decoder configuration. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely.
+
+Introduction
+Recurrent neural networks, long short-term memory and gated recurrent neural networks in particular, have been firmly established as state of the art approaches in sequence modeling and transduction problems such as language modeling and machine translation. Numerous efforts have since continued to push the boundaries of recurrent language models and encoder-decoder architectures.
+
+Methods
+The Transformer follows an encoder-decoder structure. The encoder maps an input sequence of symbol representations to a sequence of continuous representations. Given z, the decoder then generates an output sequence of symbols one element at a time.
+
+The Transformer uses multi-head attention mechanisms. Each head performs attention independently, and their outputs are concatenated and linearly transformed to produce the final output.
+
+Self-attention, sometimes called intra-attention, is an attention mechanism relating different positions of a single sequence in order to compute a representation of the sequence.
+
+Results
+Experiments show that the Transformer can be trained significantly faster than architectures based on recurrent or convolutional layers. On translation quality, the Transformer outperforms other models while requiring fewer computations.
+
+Conclusion
+In this work, we presented the Transformer, a new architecture based solely on multi-head self-attention. We demonstrated that this architecture can match or exceed the performance of recurrent and convolutional baselines while being more parallelizable and requiring less time to train.
+
+References
+[1] Bahdanau et al., 2015. Neural Machine Translation by Jointly Learning to Align and Translate
+[2] Bengio et al., 2015. Scheduled Sampling for Sequence Prediction
+[3] Cho et al., 2014. Learning Phrase Representations using RNN Encoder-Decoder
