@@ -1,6 +1,3 @@
-"""
-Streamlit web interface for research paper semantic search.
-"""
 import streamlit as st
 import json
 import re
@@ -21,7 +18,7 @@ except ImportError as e:
     st.stop()
 
 st.set_page_config(
-    page_title="Research Paper Search",
+    page_title="Semantic Search",
     page_icon="📄",
     layout="wide"
 )
@@ -59,20 +56,46 @@ with st.sidebar:
     
     st.subheader("Document Indexing")
     
+    st.subheader("Upload Papers")
+
+    uploaded_files = st.file_uploader(
+        "Upload PDF files",
+        type=["pdf", "txt"],
+        accept_multiple_files=True,
+        help="Upload research paper PDFs to index"
+    )
+
     data_dir = st.text_input(
-        "Papers Directory",
+        "Or enter Papers Directory",
         value="data/papers"
     )
-    
+
     if st.button("Index Papers", use_container_width=True, type="primary"):
         with st.spinner("Indexing papers..."):
             try:
-                st.session_state.engine.index_papers(data_dir)
-                st.session_state.indexed = True
-                st.success("Papers indexed successfully")
-                st.rerun()
+                if uploaded_files:
+                    # Save uploaded files temporarily
+                    import tempfile
+                    import shutil
+                    
+                    temp_dir = tempfile.mkdtemp()
+                    for file in uploaded_files:
+                        with open(f"{temp_dir}/{file.name}", "wb") as f:
+                            f.write(file.getbuffer())
+                    
+                    st.session_state.engine.index_papers(temp_dir)
+                    st.success(f" Indexed {len(uploaded_files)} papers!")
+                    st.session_state.indexed = True
+                    
+                    # Cleanup
+                    shutil.rmtree(temp_dir)
+                else:
+                    st.session_state.engine.index_papers(data_dir)
+                    st.success(" Indexing complete!")
+                    st.session_state.indexed = True
+                    
             except Exception as e:
-                st.error(f"Indexing failed: {e}")
+                st.error(f"Error: {e}")
     
     st.markdown("---")
     st.subheader("Statistics")
@@ -141,7 +164,6 @@ else:
     
     with st.form("search_form"):
         query = st.text_area(
-            "Search Query",
             height=100,
             placeholder="Enter search query..."
         )
