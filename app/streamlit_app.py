@@ -164,8 +164,8 @@ else:
     
     with st.form("search_form"):
         query = st.text_area(
-            height=100,
-            placeholder="Enter search query..."
+            "Search Query",
+            height=100
         )
         
         col1, col2 = st.columns(2)
